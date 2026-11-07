@@ -1,0 +1,34 @@
+{
+  "ingested_at": "2026-11-07T22:46:52+00:00",
+  "puf_year": 2024,
+  "rows": {
+    "synthetic": {
+      "beneficiary_2015": 5975,
+      "beneficiary_2016": 6288,
+      "beneficiary_2017": 6613,
+      "beneficiary_2018": 7002,
+      "beneficiary_2019": 7446,
+      "beneficiary_2020": 7837,
+      "beneficiary_2021": 8246,
+      "beneficiary_2022": 8671,
+      "beneficiary_2023": 9179,
+      "beneficiary_2024": 9660,
+      "beneficiary_2025": 10000,
+      "carrier": 1121004,
+      "outpatient": 575092,
+      "inpatient": 58066,
+      "snf": 12548,
+      "hha": 6215,
+      "hospice": 12107,
+      "dme": 103828,
+      "pde": 515520
+    },
+    "benchmarks": {
+      "hcpcs_national": 13463,
+      "em_by_provider_rows": 1687807,
+      "drg_national": 540,
+      "ndc_directory": 219087
+    }
+  },
+  "raw_fingerprint": "d71a2956af80"
+}
