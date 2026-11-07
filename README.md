@@ -8,7 +8,9 @@
 ![DuckDB](https://img.shields.io/badge/warehouse-DuckDB-yellow)
 ![Data](https://img.shields.io/badge/data-CMS%20%2B%20FDA-C8372D)
 
-![Overview](docs/screenshots/overview.jpg)
+### [▶ Open the live dashboard: claimlens-analytics.streamlit.app](https://claimlens-analytics.streamlit.app)
+
+[![Overview](docs/screenshots/overview.jpg)](https://claimlens-analytics.streamlit.app)
 
 ## Why this project
 
@@ -128,6 +130,7 @@ python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\a
 pip install -r requirements.txt
 
 streamlit run app/streamlit_app.py            # dashboard on the published marts (no download needed)
+# or open the hosted copy: https://claimlens-analytics.streamlit.app
 
 python -m claimlens.ingest                    # download CMS + FDA sources (~3.5 GB; 36 s on GitHub runners)
 python -m claimlens.warehouse --test --export # build, test, publish marts
