@@ -91,7 +91,7 @@ html, body, .stApp, .stMarkdown, p, li, label, input, button, textarea, select, 
   font-family: 'Public Sans', system-ui, sans-serif; font-variant-numeric: tabular-nums;
 }}
 .stApp {{ background: {PAPER}; color: var(--ink); }}
-.block-container {{ padding-top: 2rem; max-width: 1240px; }}
+.block-container {{ padding-top: 3.6rem; max-width: 1240px; }}
 h1, h2, h3 {{ font-family: 'Public Sans', sans-serif !important; color: var(--ink) !important; letter-spacing: -0.015em; }}
 h2 {{ font-size: 1.35rem !important; font-weight: 700 !important; margin-top: 1.6rem !important;
       padding-top: .9rem; border-top: 1px solid var(--rule); }}
@@ -107,14 +107,15 @@ h3 {{ font-size: 1.05rem !important; font-weight: 600 !important; }}
 .cl-sub {{ color: var(--muted); font-size: 1.04rem; max-width: 64ch; margin-bottom: 1.1rem; line-height: 1.5; }}
 
 /* KPI fields drawn like boxes on a claim form: red hairline frame, small red field label. */
-.fields {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 0;
+.fields {{ display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0;
   border: 1.5px solid var(--red); margin: .6rem 0 1.4rem; background: {PAPER}; }}
 .field {{ padding: .5rem .8rem .65rem; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }}
 .field .lab {{ color: var(--red); font-size: .74rem; font-weight: 600; line-height: 1.2; }}
-.field .val {{ color: var(--ink); font-size: 1.55rem; font-weight: 700; line-height: 1.15; margin-top: .25rem; }}
+.field .val {{ color: var(--ink); font-size: 1.45rem; font-weight: 700; line-height: 1.15; margin-top: .25rem; }}
 .field .ctx {{ color: var(--muted); font-size: .8rem; margin-top: .1rem; }}
 .field .ctx.up {{ color: var(--red); }}
 
+@media (max-width: 900px) {{ .fields {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
 .note {{ color: var(--muted); font-size: .87rem; max-width: 74ch; line-height: 1.5; }}
 .flag {{ color: var(--red); font-weight: 600; }}
 :focus-visible {{ outline: 2px solid var(--red) !important; outline-offset: 2px; }}
@@ -122,16 +123,17 @@ h3 {{ font-size: 1.05rem !important; font-weight: 600 !important; }}
 """
 
 
-def setup_page() -> int | None:
+def setup_page(show_year: bool = True) -> int | None:
     """Apply the theme, draw the sidebar, and return the selected analysis year."""
     st.markdown(CSS, unsafe_allow_html=True)
     with st.sidebar:
         st.markdown("### ClaimLens")
         st.caption("Medicare claims analytics and payment integrity")
         year = None
-        if has_data():
+        if has_data() and show_year:
             years = analysis_years()
             year = st.selectbox("Plan year", years[::-1], index=0)
+        if has_data():
             m = meta()
             if m.get("built_at"):
                 st.caption(f"Pipeline run {m['built_at'][:10]}")
@@ -147,7 +149,7 @@ def fields(items: list[tuple[str, str, str | None]]) -> None:
         cls = "ctx up" if ctx and ctx.startswith("▲") else "ctx"
         ctx_html = f'<div class="{cls}">{ctx}</div>' if ctx else ""
         cells.append(f'<div class="field"><div class="lab">{label}</div><div class="val">{value}</div>{ctx_html}</div>')
-    st.markdown(f'<div class="fields">{"".join(cells)}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="fields" style="--n:{len(cells)}">{"".join(cells)}</div>', unsafe_allow_html=True)
 
 
 def headline(kicker: str, text: str, sub: str | None = None) -> None:

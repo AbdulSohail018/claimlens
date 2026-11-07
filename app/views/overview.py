@@ -117,19 +117,19 @@ st.markdown("## Year over year")
 trend = (pmpm.assign(group=lambda d: d.setting.where(d.setting == "Pharmacy", "Medical"))
          .groupby(["year", "group"]).paid.sum().unstack().reset_index()
          .merge(enr[["year", "medical_members", "medical_member_months", "rx_member_months"]], on="year")
-         .merge(util[["year", "admits_per_1000", "er_visits_per_1000", "readmit_rate"]], on="year"))
+         .merge(util[["year", "admits_per_1000", "emergency_admits_per_1000", "readmit_rate"]], on="year"))
 trend["Medical PMPM"] = trend.Medical / trend.medical_member_months
 trend["Pharmacy PMPM"] = trend.Pharmacy / trend.rx_member_months
 table = trend.rename(columns={"year": "Year", "medical_members": "Members", "admits_per_1000": "Admits per 1,000",
-                              "er_visits_per_1000": "ER visits per 1,000", "readmit_rate": "Readmission rate"})[
-    ["Year", "Members", "Medical PMPM", "Pharmacy PMPM", "Admits per 1,000", "ER visits per 1,000", "Readmission rate"]]
+                              "emergency_admits_per_1000": "Emergency admits per 1,000", "readmit_rate": "Readmission rate"})[
+    ["Year", "Members", "Medical PMPM", "Pharmacy PMPM", "Admits per 1,000", "Emergency admits per 1,000", "Readmission rate"]]
 st.dataframe(
     table.sort_values("Year", ascending=False), hide_index=True, width="stretch",
-    column_config={"Year": st.column_config.NumberColumn(format="%d"),
-                   "Members": st.column_config.NumberColumn(format="%d"),
-                   "Medical PMPM": st.column_config.NumberColumn(format="$%.0f"),
-                   "Pharmacy PMPM": st.column_config.NumberColumn(format="$%.0f"),
+    column_config={"Year": st.column_config.NumberColumn(format="plain"),
+                   "Members": st.column_config.NumberColumn(format="localized"),
+                   "Medical PMPM": st.column_config.NumberColumn(format="$%,.0f"),
+                   "Pharmacy PMPM": st.column_config.NumberColumn(format="$%,.0f"),
                    "Admits per 1,000": st.column_config.NumberColumn(format="%.0f"),
-                   "ER visits per 1,000": st.column_config.NumberColumn(format="%.0f"),
+                   "Emergency admits per 1,000": st.column_config.NumberColumn(format="%.0f"),
                    "Readmission rate": st.column_config.NumberColumn(format="percent")},
 )

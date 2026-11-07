@@ -12,7 +12,7 @@ WITH dup_lines AS (
 SELECT 'Duplicate professional line' AS rule, claim_id, bene_id, amount AS amount_at_risk
 FROM dup_lines WHERE claims > 1 AND copy_num > 1
 UNION ALL
-SELECT 'Service after date of death', claim_id, bene_id, paid FROM int_claims WHERE after_death AND paid > 0
+SELECT 'Service after date of death', claim_id, bene_id, paid FROM int_claims WHERE after_death AND paid > 0  -- needs death dates; the synthetic files have none
 UNION ALL
 SELECT 'Service outside covered months', claim_id, bene_id, paid FROM int_claims
 WHERE NOT in_eligible_month AND NOT after_death AND paid > 0

@@ -48,19 +48,26 @@ def generate() -> str:
                       f"as much per month as members with none (${most.pmpm:,.0f} vs ${zero.pmpm.iloc[0]:,.0f}).", ""]
 
     u = _df(con, f"SELECT * FROM mart_utilization WHERE year = {year}").iloc[0]
-    q = _df(con, f"SELECT measure, rate FROM mart_quality WHERE year = {year}")
+    q = _df(con, f"SELECT measure, rate, measurable, data_note FROM mart_quality WHERE year = {year}")
     lines += ["## Utilization and quality", "",
-              f"- {u.admits_per_1000:,.0f} admissions and {u.er_visits_per_1000:,.0f} ER visits per 1,000 member-years; "
-              f"average stay {u.avg_length_of_stay:.1f} days; 30-day readmission rate {u.readmit_rate:.1%}."]
-    lines += [f"- {r.measure}: {r.rate:.1%}." for r in q.itertuples()]
+              f"- {u.admits_per_1000:,.0f} admissions per 1,000 member-years, {u.emergency_admit_share:.0%} of them "
+              f"emergency admissions; average stay {u.avg_length_of_stay:.1f} days; 30-day readmission rate "
+              f"{u.readmit_rate:.1%}."]
+    for r in q.itertuples():
+        if r.measurable:
+            note = r.data_note if isinstance(r.data_note, str) else ""
+            lines.append(f"- {r.measure}: {r.rate:.1%}." + (f" {note}" if note else ""))
+        else:
+            lines.append(f"- {r.measure}: {r.data_note}")
     lines.append("")
 
     ph = _df(con, f"SELECT * FROM mart_pharmacy WHERE year = {year}")
     if not ph.empty:
         r = ph.iloc[0]
         lines += ["## Pharmacy", "",
-                  f"- Generic dispensing rate {r.generic_dispensing_rate:.1%}, yet brand drugs took "
-                  f"{r.brand_share_of_cost:.0%} of plan spend. Pharmacy PMPM ${r.rx_pmpm:,.2f}.", ""]
+                  f"- Pharmacy PMPM ${r.rx_pmpm:,.2f}; {r.fills_per_member_year:.1f} fills per member per year.",
+                  f"- Generic dispensing rate {r.generic_dispensing_rate:.1%}. Real Medicare Part D runs near 90%; "
+                  "the synthetic files assign brand and generic roughly evenly, a known limit of the data.", ""]
 
     em = _df(con, "SELECT * FROM mart_em_outlier_summary")
     if not em.empty:

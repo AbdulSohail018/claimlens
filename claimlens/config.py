@@ -12,5 +12,6 @@ SQL_DIR = ROOT / "sql"
 
 
 def year_range() -> tuple[int, int]:
-    """Analysis years. The synthetic files cover 2015-2025; override with CLAIMLENS_FIRST_YEAR / _LAST_YEAR."""
-    return int(os.getenv("CLAIMLENS_FIRST_YEAR", "2015")), int(os.getenv("CLAIMLENS_LAST_YEAR", "2025"))
+    """Analysis years. Enrollment in the synthetic files runs 2015-2025, but claims stop in early 2023,
+    so the full claim years are 2015-2022. Override with CLAIMLENS_FIRST_YEAR / CLAIMLENS_LAST_YEAR."""
+    return int(os.getenv("CLAIMLENS_FIRST_YEAR", "2015")), int(os.getenv("CLAIMLENS_LAST_YEAR", "2022"))

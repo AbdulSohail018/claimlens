@@ -11,11 +11,12 @@ ph = q("SELECT * FROM mart_pharmacy ORDER BY year")
 r = ph[ph.year == year].iloc[0]
 drugs = q(f"SELECT * FROM mart_top_drugs WHERE year = {year} ORDER BY plan_paid DESC")
 named = drugs[drugs.drug != "NDC not in FDA directory"]
+named = named.assign(drug=named.drug.str.title())
 top = named.iloc[0] if not named.empty else None
 
 headline(f"Plan year {year} · Part D pharmacy",
-         f"{pct(r.generic_dispensing_rate, 0)} of prescriptions were generics, but brand drugs took "
-         f"{pct(r.brand_share_of_cost, 0)} of plan spending",
+         f"Members filled {r.fills_per_member_year:.0f} prescriptions a year at {money(r.avg_cost_per_fill, 0)} "
+         f"a fill, for {money(r.rx_pmpm, 0)} per member per month",
          (f"The single costliest drug was {top.drug} at {money(top.plan_paid)} for {num(top.members)} members."
           if top is not None else None))
 fields([
@@ -37,20 +38,22 @@ with left:
                              hovertemplate="%{x}: %{y:.1%} generic<extra></extra>"))
     fig.update_layout(title="Pharmacy PMPM and generic dispensing rate", xaxis=dict(dtick=1),
                       yaxis=dict(tickprefix="$", title=None),
-                      yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 1], showgrid=False),
+                      yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 1], dtick=0.25, showgrid=False),
                       bargap=0.3)
     show(fig, 420)
 with right:
     t = named.head(15).iloc[::-1]
-    fig = go.Figure(go.Bar(y=t.drug.str.title(), x=t.plan_paid, orientation="h",
-                           marker_color=[RED if b > 0.5 else INK for b in t.brand_share],
+    fig = go.Figure(go.Bar(y=t.drug, x=t.plan_paid, orientation="h",
+                           marker_color=INK,
                            customdata=t[["fills", "members", "drug_class"]].values,
                            hovertemplate="<b>%{y}</b><br>$%{x:,.0f} plan paid<br>%{customdata[0]:,} fills, "
                                          "%{customdata[1]:,} members<br>%{customdata[2]}<extra></extra>"))
-    fig.update_layout(title="Costliest drugs (red = mostly dispensed as brand)", xaxis=dict(tickprefix="$"), bargap=0.25)
+    fig.update_layout(title="Costliest identified drugs", xaxis=dict(tickprefix="$"), bargap=0.25)
     show(fig, 420)
 
-note("Drug names and classes come from the FDA National Drug Code Directory, matched on the 11-digit NDC. "
+note(f"Only {pct(r.generic_dispensing_rate, 0)} of synthetic fills are generic, against roughly 90% in real Medicare "
+     "Part D: the synthetic files assign brand and generic almost evenly. "
+     "Drug names and classes come from the FDA National Drug Code Directory, matched on the 11-digit NDC. "
      "Synthetic claims include some NDCs that are not in the current directory (discontinued products or synthetic "
      "codes); those are grouped as unmatched rather than dropped, so totals still reconcile.")
 
@@ -60,4 +63,4 @@ cls = (drugs.groupby("drug_class", as_index=False).agg(plan_paid=("plan_paid", "
 st.dataframe(cls, hide_index=True, width="stretch",
              column_config={"drug_class": st.column_config.TextColumn("Drug class (FDA established pharmacologic class)"),
                             "plan_paid": st.column_config.NumberColumn("Plan paid", format="$%,.0f"),
-                            "fills": st.column_config.NumberColumn("Fills", format="%d")})
+                            "fills": st.column_config.NumberColumn("Fills", format="localized")})

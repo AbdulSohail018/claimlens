@@ -4,7 +4,7 @@ import streamlit as st
 
 from lib import INK, MUTED, RED, fields, has_data, headline, money, no_data, note, num, pct, q, setup_page, show
 
-setup_page()
+setup_page(show_year=False)
 if not has_data():
     no_data()
 
@@ -38,10 +38,17 @@ row = summary[summary.specialty == sp].iloc[0]
 p0, phi = float(row.peer_share_l5), float(row.overdispersion_phi)
 
 xs = np.geomspace(max(50, f.visits.min()), f.visits.max(), 200)
-upper = np.minimum(p0 + 3.09 * np.sqrt(phi * p0 * (1 - p0) / xs), 1)
-upper95 = np.minimum(p0 + 1.96 * np.sqrt(phi * p0 * (1 - p0) / xs), 1)
-lower = np.maximum(p0 - 3.09 * np.sqrt(phi * p0 * (1 - p0) / xs), 0)
-sample = f if len(f) <= 6000 else f[f.high_outlier].pipe(lambda o: o._append(f[~f.high_outlier].sample(6000, random_state=1)))
+
+
+def limit(z: float) -> np.ndarray:
+    """Funnel limit at each volume; points outside 0-100% are dropped rather than drawn along the edge."""
+    v = p0 + z * np.sqrt(phi * p0 * (1 - p0) / xs)
+    return np.where((v > 0) & (v < 1), v, np.nan)
+
+
+upper, upper95, lower = limit(3.09), limit(1.96), limit(-3.09)
+# Every provider is plotted (WebGL), so the picture keeps the true proportion of outliers.
+sample = f
 
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=xs, y=upper, mode="lines", line=dict(color=RED, width=1.6), name="99.8% limit"))
@@ -52,14 +59,16 @@ fig.add_hline(y=p0, line=dict(color=INK, width=1.2), annotation_text=f"specialty
 normal = sample[~sample.high_outlier]
 flag = sample[sample.high_outlier]
 fig.add_trace(go.Scattergl(x=normal.visits, y=normal.share_l5, mode="markers", name="Within expected range",
-                           marker=dict(color="rgba(28,37,65,0.28)", size=5),
+                           marker=dict(color="rgba(28,37,65,0.22)", size=4),
                            hovertemplate="%{x:,} visits, %{y:.1%} level 5<extra></extra>"))
 fig.add_trace(go.Scattergl(x=flag.visits, y=flag.share_l5, mode="markers", name="High outlier",
-                           marker=dict(color=RED, size=7, line=dict(color="#FFFFFF", width=0.6)),
+                           marker=dict(color=RED, size=5, opacity=0.8),
                            customdata=flag[["provider_key", "payment_above_peer_mix"]].values,
                            hovertemplate="Provider %{customdata[0]}<br>%{x:,} visits, %{y:.1%} level 5<br>"
                                          "$%{customdata[1]:,.0f} above peer mix<extra></extra>"))
-fig.update_layout(xaxis=dict(type="log", title="Established-patient office visits in 2024 (log scale)"),
+ticks = [v for v in (50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000) if f.visits.min() <= v <= f.visits.max() * 1.2]
+fig.update_layout(xaxis=dict(type="log", title="Established-patient office visits in 2024 (log scale)",
+                             tickvals=ticks, ticktext=[f"{v:,}" for v in ticks], minor=dict(showgrid=False)),
                   yaxis=dict(title="Share billed as level 5 (99215)", tickformat=".0%", range=[0, min(1, max(0.25, float(f.share_l5.quantile(0.999)) * 1.1))]),
                   legend=dict(y=-0.2))
 show(fig, 520)
@@ -68,22 +77,22 @@ note(f"Each dot is one provider. The funnel narrows as volume grows because a bu
      "specialty's own spread, so ordinary practice variation isn't flagged. Providers are shown only as anonymous keys.")
 
 # ---- Specialty table + state map ----------------------------------------------------------------------
-left, right = st.columns([1.15, 1], gap="large")
-with left:
+if True:
     st.markdown("## By specialty")
     t = summary.sort_values("outlier_payment_above_peer_mix", ascending=False).head(20)
     st.dataframe(
         t[["specialty", "providers", "high_outliers", "outlier_share", "peer_share_l5", "outlier_median_share_l5",
            "outlier_payment_above_peer_mix"]],
-        hide_index=True, width="stretch", height=480,
-        column_config={"specialty": "Specialty", "providers": st.column_config.NumberColumn("Providers", format="%d"),
-                       "high_outliers": st.column_config.NumberColumn("Outliers", format="%d"),
+        hide_index=True, width="stretch", height=420,
+        column_config={"specialty": "Specialty", "providers": st.column_config.NumberColumn("Providers", format="localized"),
+                       "high_outliers": st.column_config.NumberColumn("Outliers", format="localized"),
                        "outlier_share": st.column_config.NumberColumn("Outlier share", format="percent"),
                        "peer_share_l5": st.column_config.NumberColumn("Peer level-5 share", format="percent"),
                        "outlier_median_share_l5": st.column_config.NumberColumn("Outliers' level-5 share", format="percent"),
                        "outlier_payment_above_peer_mix": st.column_config.NumberColumn("Paid above peer mix", format="$%,.0f")},
     )
-with right:
+left, right = st.columns([1.6, 1], gap="large")
+with left:
     st.markdown("## By state")
     states = q("SELECT * FROM mart_em_state")
     fig = go.Figure(go.Choropleth(
@@ -95,7 +104,14 @@ with right:
     ))
     fig.update_layout(geo=dict(scope="usa", bgcolor="rgba(0,0,0,0)", lakecolor="#FFFFFF"), margin=dict(l=0, r=0, t=10, b=0))
     show(fig, 400)
-    note("States with at least 100 assessed providers.")
+with right:
+    st.markdown("## ")
+    top = states.sort_values("outlier_share", ascending=False)
+    st.dataframe(top[["state", "providers", "outlier_share"]], hide_index=True, width="stretch", height=380,
+                 column_config={"state": "State", "providers": st.column_config.NumberColumn("Providers", format="localized"),
+                                "outlier_share": st.column_config.NumberColumn("Outlier share", format="percent")})
+note("States with at least 100 assessed providers. Differences between states partly reflect specialty mix and "
+     "local billing culture, not only coding behaviour.")
 
 # ---- Synthetic claim rules ----------------------------------------------------------------------------
 st.markdown("## Rule checks on the plan's own claims")
@@ -103,8 +119,8 @@ rules = q("SELECT * FROM mart_integrity_summary")
 note("Deterministic edits that a claims system runs before or after payment, applied to the synthetic member claims. "
      "Findings here are excluded from PMPM.")
 st.dataframe(rules, hide_index=True, width="stretch",
-             column_config={"rule": "Rule", "findings": st.column_config.NumberColumn("Findings", format="%d"),
-                            "members": st.column_config.NumberColumn("Members", format="%d"),
+             column_config={"rule": "Rule", "description": st.column_config.TextColumn("What it checks", width="large"), "findings": st.column_config.NumberColumn("Findings", format="localized"),
+                            "members": st.column_config.NumberColumn("Members", format="localized"),
                             "amount_at_risk": st.column_config.NumberColumn("Amount at risk", format="$%,.0f"),
                             "share_of_all_paid": st.column_config.NumberColumn("Share of all paid", format="percent")})
 _ = MUTED

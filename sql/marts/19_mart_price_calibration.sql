@@ -4,7 +4,7 @@ WITH synth AS (
     SELECT hcpcs, count(*) AS lines, median(line_paid / nullif(units, 0)) AS synthetic_paid_per_unit
     FROM stg_claim_lines
     WHERE setting = 'Professional' AND line_paid > 0 AND hcpcs IS NOT NULL
-    GROUP BY 1 HAVING count(*) >= 200
+    GROUP BY 1 HAVING count(*) >= 100
 ),
 real AS (
     SELECT hcpcs, any_value(hcpcs_desc) AS hcpcs_desc,

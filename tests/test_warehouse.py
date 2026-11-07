@@ -47,15 +47,17 @@ def test_conditions_need_two_dates_or_a_facility_claim(con):
 def test_readmission_and_utilization(con):
     stays = q(con, "SELECT claim_id, is_index, readmitted_30d FROM int_admissions ORDER BY claim_id")
     assert stays == [("I1", True, True), ("I2", True, False)]
-    util = q(con, "SELECT admits, er_visits, readmit_rate FROM mart_utilization WHERE year = 2020")[0]
-    assert util == (2, 1, 0.5)
+    util = q(con, "SELECT admits, emergency_admit_share, readmit_rate FROM mart_utilization WHERE year = 2020")[0]
+    assert util == (2, 1.0, 0.5)
 
 
 def test_quality_measures(con):
-    rates = dict(q(con, "SELECT measure, rate FROM mart_quality WHERE year = 2020"))
-    assert rates["Diabetes: HbA1c testing"] == 1.0
-    assert rates["Statin use in persons with diabetes"] == 1.0
-    assert rates["30-day all-cause readmissions"] == 0.5
+    rows = {r[0]: r[1:] for r in q(con, "SELECT measure, rate, measurable FROM mart_quality WHERE year = 2020")}
+    assert rows["Diabetes: HbA1c testing"][0] == 1.0
+    assert rows["Statin use in persons with diabetes"][0] == 1.0
+    assert rows["30-day all-cause readmissions"][0] == 0.5
+    # The fixture has a single HbA1c claim: far too few to publish the measure.
+    assert rows["Diabetes: HbA1c testing"][1] is False
 
 
 def test_integrity_rules(con):

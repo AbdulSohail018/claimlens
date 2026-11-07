@@ -31,19 +31,26 @@ with left:
         text=[money(v) for v in comorb.pmpm], textposition="outside",
         customdata=comorb.members, hovertemplate="%{x} conditions: $%{y:,.0f} PMPM, %{customdata:,} members<extra></extra>",
     ))
-    fig.update_layout(title="Total PMPM by number of chronic conditions", xaxis_title="Chronic conditions",
+    fig.update_layout(title="Total PMPM by number of chronic conditions",
+                      xaxis=dict(title="Chronic conditions", type="category"),
                       yaxis=dict(tickprefix="$", title=None), bargap=0.3)
     show(fig, 420)
 
 with right:
-    c = cond.copy()
+    c = cond.sort_values("prevalence").reset_index(drop=True)
+    # Alternate label positions so neighbouring bubbles don't print on top of each other.
+    positions = ["top center", "bottom center", "middle right", "middle left"]
     fig = go.Figure(go.Scatter(
-        x=c.prevalence, y=c.pmpm_with_condition, mode="markers+text", text=c.condition, textposition="top center",
+        x=c.prevalence, y=c.pmpm_with_condition, mode="markers+text",
+        # Label the six most common conditions; rarer ones cluster near zero and are named on hover.
+        text=[name if rank < 6 else "" for name, rank in zip(c.condition, c.members.rank(ascending=False) - 1, strict=False)],
+        hovertext=c.condition,
+        textposition=[positions[i % len(positions)] for i in range(len(c))],
         textfont=dict(size=11, color=INK),
         marker=dict(size=(c.members / c.members.max()) ** 0.5 * 46 + 8, color="rgba(61,110,168,0.35)",
                     line=dict(color=INK, width=1)),
         customdata=c[["members", "avg_conditions"]].values,
-        hovertemplate="<b>%{text}</b><br>%{x:.1%} of members, $%{y:,.0f} PMPM<br>"
+        hovertemplate="<b>%{hovertext}</b><br>%{x:.1%} of members, $%{y:,.0f} PMPM<br>"
                       "%{customdata[0]:,} members, %{customdata[1]:.1f} conditions on average<extra></extra>",
     ))
     fig.update_layout(title="How common, and how costly", xaxis=dict(title="Share of members", tickformat=".0%"),
@@ -74,13 +81,13 @@ drg = q("SELECT * FROM mart_drgs ORDER BY paid DESC LIMIT 15")
 if drg.empty:
     st.info("No DRG-coded inpatient stays.")
 else:
-    t = drg.assign(desc=lambda d: d.drg_desc.fillna("Description not in 2024 CMS file").str.capitalize())
+    t = drg.assign(desc=lambda d: d.drg_desc.str.capitalize().fillna("Not in the 2024 CMS file (code retired or renumbered)"))
     st.dataframe(
         t[["drg", "desc", "stays", "paid", "avg_paid", "national_avg_paid_2024", "avg_los", "readmit_rate"]],
         hide_index=True, width="stretch",
         column_config={
             "drg": "MS-DRG", "desc": st.column_config.TextColumn("Description", width="large"),
-            "stays": st.column_config.NumberColumn("Stays", format="%d"),
+            "stays": st.column_config.NumberColumn("Stays", format="localized"),
             "paid": st.column_config.NumberColumn("Total paid", format="$%,.0f"),
             "avg_paid": st.column_config.NumberColumn("Avg paid per stay", format="$%,.0f"),
             "national_avg_paid_2024": st.column_config.NumberColumn("Real Medicare avg, 2024", format="$%,.0f"),
