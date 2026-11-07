@@ -124,8 +124,9 @@ table = trend.rename(columns={"year": "Year", "medical_members": "Members", "adm
                               "emergency_admits_per_1000": "Emergency admits per 1,000", "readmit_rate": "Readmission rate"})[
     ["Year", "Members", "Medical PMPM", "Pharmacy PMPM", "Admits per 1,000", "Emergency admits per 1,000", "Readmission rate"]]
 st.dataframe(
-    table.sort_values("Year", ascending=False), hide_index=True, width="stretch",
-    column_config={"Year": st.column_config.NumberColumn(format="plain"),
+    table.sort_values("Year", ascending=False).assign(Year=lambda d: d.Year.astype(int).astype(str)),
+    hide_index=True, width="stretch",
+    column_config={"Year": st.column_config.TextColumn("Year"),
                    "Members": st.column_config.NumberColumn(format="localized"),
                    "Medical PMPM": st.column_config.NumberColumn(format="$%,.0f"),
                    "Pharmacy PMPM": st.column_config.NumberColumn(format="$%,.0f"),
